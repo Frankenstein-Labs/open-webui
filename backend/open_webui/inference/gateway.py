@@ -11,8 +11,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 ENGINE_REMOVED_MESSAGE = (
-    "Le moteur d’inférence OpenWebUI a été supprimé. "
-    "Le moteur OpenDevin/OpenHands sera branché ultérieurement."
+    'Le moteur d’inférence OpenWebUI a été supprimé. Le moteur OpenDevin/OpenHands sera branché ultérieurement.'
 )
 
 
