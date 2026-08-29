@@ -17,7 +17,8 @@ export const verifyOllamaConnection = async (
 export const getOllamaConfig = async (token = '') => unavailable(token);
 export const updateOllamaConfig = async (token = '', config: unknown) => unavailable(token, config);
 export const getOllamaUrls = async (token = '') => unavailable(token);
-export const getOllamaVersion = async (token: string, urlIdx?: number) => unavailable(token, urlIdx);
+export const getOllamaVersion = async (token: string, urlIdx?: number) =>
+	unavailable(token, urlIdx);
 export const getOllamaModels = async (token = '', urlIdx: number | null = null) =>
 	unavailable(token, urlIdx);
 export const generatePrompt = async (token = '', model: string, conversation: string) =>

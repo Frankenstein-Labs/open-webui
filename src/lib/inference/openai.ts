@@ -19,7 +19,8 @@ export const verifyOpenAIConnection = async (
 	connection: Record<string, unknown> = {},
 	direct = false
 ) => unavailable(token, connection, direct);
-export const chatCompletion = async (token = '', body: unknown, url = '') => unavailable(token, body, url);
+export const chatCompletion = async (token = '', body: unknown, url = '') =>
+	unavailable(token, body, url);
 export const generateOpenAIChatCompletion = async (token = '', body: unknown, url = '') =>
 	unavailable(token, body, url);
 export const synthesizeOpenAISpeech = async (
