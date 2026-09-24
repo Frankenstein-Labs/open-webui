@@ -49,13 +49,21 @@ async def generate_chat_completion(
     **_: Any,
 ) -> Any:
     """Route chat tasks to ai-manus or OpenHands using the task-aware selector."""
-    del request, user
+    del request
     if form_data is None:
         inference_engine_unavailable()
     # The router reads the mode from metadata first, then the top level.
     mode = form_data.get('conversation_mode')
     if mode and 'conversation_mode' not in (form_data.get('metadata') or {}):
         form_data['metadata'] = {**(form_data.get('metadata') or {}), 'conversation_mode': mode}
+
+    # CORTEX Agent orchestration is opt-in and capability-routed. When the
+    # feature flag is off, the legacy single-engine path below is unchanged.
+    from open_webui.inference.cortex.bridge import should_orchestrate
+
+    if should_orchestrate(form_data):
+        return await _orchestrated_completion(form_data, user)
+
     try:
         result = await route_chat_completion(
             form_data,
@@ -74,6 +82,25 @@ async def generate_chat_completion(
 
 async def embed(*_: Any, **__: Any) -> Any:
     inference_engine_unavailable()
+
+
+async def _orchestrated_completion(form_data: dict[str, Any], user: Any) -> Any:
+    """Delegate to the CORTEX orchestrator in Agent mode (feature-flagged)."""
+    from fastapi.responses import StreamingResponse
+
+    from open_webui.inference.cortex.bridge import route_agent_completion
+
+    result = await route_agent_completion(form_data, user, stream=bool(form_data.get('stream')))
+    if hasattr(result, '__aiter__'):
+        return StreamingResponse(result, media_type='text/event-stream')
+    return result
+
+
+def describe_cortex_engines() -> dict[str, Any]:
+    """Diagnostics: registered engines and their declared capabilities."""
+    from open_webui.inference.cortex.bridge import describe_engines
+
+    return describe_engines()
 
 
 async def embeddings(*_: Any, **__: Any) -> Any:

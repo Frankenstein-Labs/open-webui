@@ -831,6 +831,23 @@ if ENABLE_SCIM:
 ##################################
 
 
+@app.get('/api/cortex/engines')
+async def get_cortex_engines(user=Depends(get_admin_user)):
+    """Capability and routing diagnostics for the CORTEX engine bridge.
+
+    Read-only: reports registered engines, their capabilities, and whether the
+    Agent orchestrator is enabled. It never executes a task.
+    """
+    from open_webui.inference.cortex.bridge import chaining_enabled, orchestrator_enabled
+    from open_webui.inference.gateway import describe_cortex_engines
+
+    return {
+        'orchestratorEnabled': orchestrator_enabled(),
+        'chainingEnabled': chaining_enabled(),
+        **describe_cortex_engines(),
+    }
+
+
 @app.get('/api/models')
 @app.get('/api/v1/models')  # Experimental: Compatibility with OpenAI API
 async def get_models(request: Request, refresh: bool = False, user=Depends(get_verified_user)):
