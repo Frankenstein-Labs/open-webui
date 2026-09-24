@@ -4,15 +4,6 @@ These assert that the reused port-preview path never receives an endpoint the
 policy refused, and that screen streaming is off by default.
 """
 
-import sys
-from pathlib import Path
-
-# Locate the backend root by walking up to the directory holding the package,
-# so the suite passes whether pytest is run from backend/ or the repo root.
-BACKEND = next(parent for parent in Path(__file__).resolve().parents if (parent / 'open_webui').is_dir())
-if str(BACKEND) not in sys.path:
-    sys.path.insert(0, str(BACKEND))
-
 from open_webui.inference.cortex.capabilities import Capability  # noqa: E402
 from open_webui.inference.cortex.policy import CortexPolicy  # noqa: E402
 from open_webui.inference.cortex.runtime import describe_runtime  # noqa: E402

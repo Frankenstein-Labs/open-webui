@@ -4,16 +4,7 @@ Focus: OpenRouter is explicitly supported, `OPENHANDS_*` overrides keep working,
 and a credential can never surface through provider metadata.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
-
-# Locate the backend root by walking up to the directory holding the package,
-# so the suite passes whether pytest is run from backend/ or the repo root.
-BACKEND = next(parent for parent in Path(__file__).resolve().parents if (parent / 'open_webui').is_dir())
-if str(BACKEND) not in sys.path:
-    sys.path.insert(0, str(BACKEND))
 
 from open_webui.inference.cortex.providers import (  # noqa: E402
     DEFAULT_OPENROUTER_BASE_URL,

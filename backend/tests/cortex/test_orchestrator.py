@@ -6,14 +6,6 @@ exercised end to end without any engine running.
 """
 
 import asyncio
-import sys
-from pathlib import Path
-
-# Locate the backend root by walking up to the directory holding the package,
-# so the suite passes whether pytest is run from backend/ or the repo root.
-BACKEND = next(parent for parent in Path(__file__).resolve().parents if (parent / 'open_webui').is_dir())
-if str(BACKEND) not in sys.path:
-    sys.path.insert(0, str(BACKEND))
 
 from open_webui.inference.cortex.adapters.ai_manus import AiManusAdapter  # noqa: E402
 from open_webui.inference.cortex.adapters.base import BaseEngineAdapter  # noqa: E402

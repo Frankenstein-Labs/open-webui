@@ -4,16 +4,7 @@ The whole integration is opt-in, so these tests are primarily about *not*
 activating it accidentally, and about the diagnostics endpoint shape.
 """
 
-import sys
-from pathlib import Path
-
 import pytest
-
-# Locate the backend root by walking up to the directory holding the package,
-# so the suite passes whether pytest is run from backend/ or the repo root.
-BACKEND = next(parent for parent in Path(__file__).resolve().parents if (parent / 'open_webui').is_dir())
-if str(BACKEND) not in sys.path:
-    sys.path.insert(0, str(BACKEND))
 
 from open_webui.inference.cortex import bridge  # noqa: E402
 
