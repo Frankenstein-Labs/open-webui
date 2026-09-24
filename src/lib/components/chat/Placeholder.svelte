@@ -54,6 +54,8 @@
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let webSearchEnabled = false;
+	// CORTEX conversation mode shared with the message input.
+	export let conversationMode: 'discussion' | 'agent' = 'discussion';
 
 	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
@@ -226,6 +228,7 @@
 						bind:imageGenerationEnabled
 						bind:codeInterpreterEnabled
 						bind:webSearchEnabled
+						bind:conversationMode
 						bind:atSelectedModel
 						bind:showCommands
 						bind:dragged

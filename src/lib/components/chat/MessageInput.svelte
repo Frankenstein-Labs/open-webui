@@ -87,6 +87,7 @@
 	import Wrench from '../icons/Wrench.svelte';
 	import Cube from '../icons/Cube.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
+	import ChatBubble from '../icons/ChatBubble.svelte';
 	import Mic from '../icons/Mic.svelte';
 
 	import InputVariablesModal from './MessageInput/InputVariablesModal.svelte';
@@ -158,6 +159,9 @@
 	export let webSearchEnabled = false;
 	export let codeInterpreterEnabled = false;
 
+	// CORTEX conversation mode: 'discussion' (conversational) or 'agent' (multi-step tasks).
+	export let conversationMode: 'discussion' | 'agent' = 'discussion';
+
 	export let pendingOAuthTools = [];
 
 	let showTerminalMenu = false;
@@ -187,6 +191,23 @@
 		integrationsMenuCloseOnOutsideClick = true;
 	}
 
+	$: conversationModes = [
+		{
+			value: 'discussion' as const,
+			label: $i18n.t('Discussion'),
+			description: $i18n.t('Chat, ask questions and get answers')
+		},
+		{
+			value: 'agent' as const,
+			label: $i18n.t('Agent'),
+			description: $i18n.t('Plan and complete multi-step tasks')
+		}
+	];
+	$: conversationModeIndex = Math.max(
+		0,
+		conversationModes.findIndex((mode) => mode.value === conversationMode)
+	);
+
 	$: onChange({
 		prompt,
 		files: files
@@ -203,7 +224,8 @@
 		selectedFilterIds,
 		imageGenerationEnabled,
 		webSearchEnabled,
-		codeInterpreterEnabled
+		codeInterpreterEnabled,
+		conversationMode
 	});
 
 	const inputVariableHandler = async (text: string): Promise<string> => {
@@ -1978,6 +2000,46 @@
 									{/if}
 
 									<div class="flex flex-1 items-center min-w-0 overflow-x-auto scrollbar-none">
+										<div
+											class="relative flex shrink-0 items-center rounded-full bg-gray-100/70 p-0.5 dark:bg-gray-800/70"
+											role="radiogroup"
+											aria-label={$i18n.t('Conversation mode')}
+										>
+											<span
+												aria-hidden="true"
+												class="pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-white shadow-xs ring-1 ring-black/5 transition-transform duration-base ease-in-out dark:bg-gray-700 dark:ring-white/10"
+												style="width: calc((100% - 0.25rem) / {conversationModes.length}); transform: translateX({conversationModeIndex *
+													100}%);"
+											/>
+											{#each conversationModes as mode (mode.value)}
+												<Tooltip content={mode.description} placement="top">
+													<button
+														type="button"
+														role="radio"
+														aria-checked={conversationMode === mode.value}
+														aria-label={mode.label}
+														data-testid="conversation-mode-{mode.value}"
+														on:click|preventDefault={() => (conversationMode = mode.value)}
+														class="relative z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-medium transition-colors duration-200 focus:outline-hidden {conversationMode ===
+														mode.value
+															? 'text-gray-900 dark:text-gray-100'
+															: 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'}"
+													>
+														{#if mode.value === 'agent'}
+															<Sparkles className="size-3.5" strokeWidth="1.75" />
+														{:else}
+															<ChatBubble className="size-3.5" strokeWidth="1.75" />
+														{/if}
+														<span class="hidden sm:inline">{mode.label}</span>
+													</button>
+												</Tooltip>
+											{/each}
+										</div>
+
+										<div
+											class="flex self-center w-[1px] h-4 mx-1.5 bg-gray-200/50 dark:bg-gray-800/50 shrink-0"
+										/>
+
 										{#if showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
 											<IntegrationsMenu
 												selectedModels={selectedModelIds}

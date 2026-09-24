@@ -316,6 +316,12 @@
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
 	let codeInterpreterEnabled = false;
+	// CORTEX conversation mode, persisted across sessions.
+	let conversationMode: 'discussion' | 'agent' =
+		(localStorage.getItem('conversationMode') as 'discussion' | 'agent') === 'agent'
+			? 'agent'
+			: 'discussion';
+	$: localStorage.setItem('conversationMode', conversationMode);
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;
@@ -3147,6 +3153,7 @@
 					...($terminalServers ?? []).filter((t) => !t.id)
 				],
 				features: getFeatures(),
+				conversation_mode: conversationMode,
 				variables: {
 					...getPromptVariables(
 						$user?.name,
@@ -3965,6 +3972,7 @@
 										bind:codeInterpreterEnabled
 										{pendingOAuthTools}
 										bind:webSearchEnabled
+										bind:conversationMode
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4084,6 +4092,7 @@
 										bind:codeInterpreterEnabled
 										{pendingOAuthTools}
 										bind:webSearchEnabled
+										bind:conversationMode
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4130,6 +4139,7 @@
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
+									bind:conversationMode
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged
