@@ -39,7 +39,7 @@ _CODE_TERMS = re.compile(
 
 
 def choose_engine(form_data: dict[str, Any]) -> EngineDecision:
-    """Choose an engine from an explicit override, model prefix, or task intent."""
+    """Choose an engine from an explicit override, conversation mode, model prefix, or task intent."""
     metadata = form_data.get('metadata') or {}
     explicit = (metadata.get('engine') or form_data.get('engine') or os.getenv('OPEN_WEBUI_ENGINE') or 'auto').lower()
     if explicit in {'ai-manus', 'aimanus', 'open-divine', 'openhands-computer'}:
@@ -54,16 +54,40 @@ def choose_engine(form_data: dict[str, Any]) -> EngineDecision:
         return EngineDecision('openhands', 'model namespace')
 
     text = ' '.join(str(item.get('content', '')) for item in form_data.get('messages', []) if isinstance(item, dict))
+    mode = str(metadata.get('conversation_mode') or form_data.get('conversation_mode') or '').lower()
+
+    mode_decision = _decision_for_mode(mode, text)
+    if mode_decision is not None:
+        return mode_decision
+
     if _COMPUTER_TERMS.search(text):
         return EngineDecision('ai-manus', 'computer or browser task')
     if _CODE_TERMS.search(text):
         return EngineDecision('openhands', 'software-engineering task')
 
+    return EngineDecision(_default_engine(), 'configured default')
+
+
+def _decision_for_mode(mode: str, text: str) -> EngineDecision | None:
+    """Resolve an explicit conversation mode, or None when no mode was selected."""
+    if mode == 'agent':
+        # Agent mode is task-oriented: pick the engine that matches the task type.
+        if _COMPUTER_TERMS.search(text):
+            return EngineDecision('ai-manus', 'agent mode, computer or browser task')
+        if _CODE_TERMS.search(text):
+            return EngineDecision('openhands', 'agent mode, software-engineering task')
+        return EngineDecision(_default_engine(), 'agent mode, general task')
+
+    if mode == 'discussion':
+        # Discussion mode stays conversational and never escalates to a computer agent.
+        return EngineDecision('openhands', 'discussion mode, conversational reply')
+
+    return None
+
+
+def _default_engine() -> str:
     default = os.getenv('OPEN_WEBUI_DEFAULT_ENGINE', 'openhands').lower()
-    return EngineDecision(
-        'ai-manus' if default in {'ai-manus', 'aimanus', 'open-divine'} else 'openhands',
-        'configured default',
-    )
+    return 'ai-manus' if default in {'ai-manus', 'aimanus', 'open-divine'} else 'openhands'
 
 
 def _text_from_event(value: Any) -> str:

@@ -52,6 +52,10 @@ async def generate_chat_completion(
     del request, user
     if form_data is None:
         inference_engine_unavailable()
+    # The router reads the mode from metadata first, then the top level.
+    mode = form_data.get('conversation_mode')
+    if mode and 'conversation_mode' not in (form_data.get('metadata') or {}):
+        form_data['metadata'] = {**(form_data.get('metadata') or {}), 'conversation_mode': mode}
     try:
         result = await route_chat_completion(
             form_data,
