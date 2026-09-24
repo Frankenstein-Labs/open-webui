@@ -1,0 +1,11 @@
+# Optional engine integrations. Install this file only when using the
+# corresponding external/local agent engine.
+
+# ai-manus adapter (HTTP + WebSocket)
+# websockets >= 14 is required: the adapter passes `additional_headers` to
+# websockets.connect(), which older releases spell `extra_headers`.
+websockets>=14
+
+# OpenHands Software Agent SDK (Python >= 3.12 is required by the SDK)
+# Install from the pinned repository when the backend runs on Python 3.12+:
+# pip install "openhands-sdk @ git+https://github.com/OpenHands/software-agent-sdk.git#subdirectory=openhands-sdk"

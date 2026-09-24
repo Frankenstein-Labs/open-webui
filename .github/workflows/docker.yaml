@@ -35,16 +35,6 @@ jobs:
             suffix: ""
             build_args: ""
             free_disk: false
-          - name: cuda
-            suffix: "-cuda"
-            build_args: "USE_CUDA=true"
-            free_disk: true
-          - name: cuda126
-            suffix: "-cuda126"
-            build_args: |
-              USE_CUDA=true
-              USE_CUDA_VER=cu126
-            free_disk: true
           - name: ollama
             suffix: "-ollama"
             build_args: "USE_OLLAMA=true"
