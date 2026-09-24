@@ -9,3 +9,8 @@ websockets>=14
 # OpenHands Software Agent SDK (Python >= 3.12 is required by the SDK)
 # Install from the pinned repository when the backend runs on Python 3.12+:
 # pip install "openhands-sdk @ git+https://github.com/OpenHands/software-agent-sdk.git#subdirectory=openhands-sdk"
+
+# CORTEX Orchestrator (Agent mode)
+# PyJWT is only needed when the ai-manus deployment authenticates with a shared
+# JWT secret (AI_MANUS_JWT_SECRET) instead of a pre-issued user token.
+PyJWT>=2.8
