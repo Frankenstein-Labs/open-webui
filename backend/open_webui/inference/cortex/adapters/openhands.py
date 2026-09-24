@@ -23,6 +23,7 @@ from typing import Any
 
 from open_webui.inference.cortex.adapters.base import BaseEngineAdapter
 from open_webui.inference.cortex.capabilities import AgentCapability, Capability, EngineContext, EngineSession
+from open_webui.inference.cortex.providers import resolve_provider_config
 from open_webui.inference.cortex.protocol import CortexEvent, error_event, make_event
 
 # Tools the SDK preset can run, mapped to the CORTEX capability vocabulary.
@@ -115,21 +116,10 @@ class OpenHandsAdapter(BaseEngineAdapter):
         except ImportError as exc:
             raise RuntimeError('OpenHands SDK is not installed; install backend/requirements-engines.txt') from exc
 
-        llm_config: dict[str, Any] = {
-            'model': os.getenv('OPENHANDS_MODEL', os.getenv('OPENAI_MODEL', 'gpt-4o')),
-            'api_key': os.getenv('OPENHANDS_API_KEY', os.getenv('OPENAI_API_KEY', '')),
-            'usage_id': 'cortex-web',
-            'drop_params': True,
-        }
-        base_url = os.getenv('OPENHANDS_BASE_URL', os.getenv('OPENAI_API_BASE', ''))
-        if base_url:
-            llm_config['base_url'] = base_url
-        if not llm_config['api_key']:
-            raise RuntimeError('OPENHANDS_API_KEY or OPENAI_API_KEY is required')
-
+        config = resolve_provider_config()
         # cli_mode must stay False for Agent mode: cli_mode=True disables the
         # browser tool set inside get_default_agent().
-        agent = get_default_agent(llm=LLM(**llm_config), cli_mode=not self.enable_browser)
+        agent = get_default_agent(llm=LLM(**config.to_llm_kwargs()), cli_mode=not self.enable_browser)
         workspace = os.getenv('OPENHANDS_WORKSPACE') or (
             context.metadata.get('workspace') if context and context.metadata else None
         )

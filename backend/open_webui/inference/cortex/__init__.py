@@ -15,6 +15,7 @@ from open_webui.inference.cortex.capabilities import (
 )
 from open_webui.inference.cortex.orchestrator import CortexOrchestrator, EngineUnavailableError
 from open_webui.inference.cortex.policy import CortexPolicy, CortexPolicyError
+from open_webui.inference.cortex.providers import LlmProviderConfig, ProviderConfigError, resolve_provider_config
 from open_webui.inference.cortex.protocol import PROTOCOL_VERSION, CortexEvent, make_event
 from open_webui.inference.cortex.routing import (
     EngineSelection,
@@ -38,9 +39,12 @@ __all__ = [
     'EngineSelection',
     'EngineSession',
     'EngineUnavailableError',
+    'LlmProviderConfig',
+    'ProviderConfigError',
     'RoutingPlan',
     'TaskRequirements',
     'derive_requirements',
     'make_event',
     'plan_route',
+    'resolve_provider_config',
 ]

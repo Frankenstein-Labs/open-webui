@@ -92,6 +92,24 @@ def test_describe_engines_reports_capabilities():
     assert described['capabilities']
 
 
+def test_describe_engines_reports_provider_without_the_key(monkeypatch):
+    monkeypatch.setenv('CORTEX_LLM_PROVIDER', 'openrouter')
+    monkeypatch.setenv('OPENROUTER_API_KEY', 'sk-or-v1-should-not-leak')
+    described = bridge.describe_engines()
+    assert described['llmProvider']['provider'] == 'openrouter'
+    assert described['llmProvider']['hasApiKey'] is True
+    assert 'should-not-leak' not in str(described)
+    assert 'apiKey' not in described['llmProvider']
+
+
+def test_describe_engines_reports_provider_error_instead_of_raising(monkeypatch):
+    monkeypatch.delenv('OPENROUTER_API_KEY', raising=False)
+    monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+    monkeypatch.delenv('OPENHANDS_API_KEY', raising=False)
+    described = bridge.describe_engines()
+    assert 'error' in described['llmProvider']
+
+
 def test_route_agent_completion_returns_openai_shaped_result(monkeypatch):
     """Full gateway path: form_data -> orchestrator -> OpenAI-style response."""
     import asyncio

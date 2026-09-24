@@ -67,7 +67,15 @@ def get_orchestrator() -> CortexOrchestrator:
 
 
 def describe_engines() -> dict[str, Any]:
-    return describe_registry(get_registry())
+    from open_webui.inference.cortex.providers import ProviderConfigError, resolve_provider_config
+
+    described = describe_registry(get_registry())
+    try:
+        # to_metadata() deliberately excludes the credential.
+        described['llmProvider'] = resolve_provider_config().to_metadata()
+    except ProviderConfigError as exc:
+        described['llmProvider'] = {'error': str(exc)}
+    return described
 
 
 def plan_for(form_data: dict[str, Any]) -> dict[str, Any]:
