@@ -9,6 +9,12 @@ start without silently invoking a model provider.
 from typing import Any
 
 from fastapi import HTTPException, status
+from fastapi.responses import StreamingResponse
+
+from open_webui.inference.engine_router import (
+    EngineConfigurationError,
+    generate_chat_completion as route_chat_completion,
+)
 
 ENGINE_REMOVED_MESSAGE = (
     'Le moteur d’inférence OpenWebUI a été supprimé. Le moteur OpenDevin/OpenHands sera branché ultérieurement.'
@@ -36,8 +42,30 @@ class GenerateEmbedForm:
         pass
 
 
-async def generate_chat_completion(*_: Any, **__: Any) -> Any:
-    inference_engine_unavailable()
+async def generate_chat_completion(
+    request: Any = None,
+    form_data: dict[str, Any] | None = None,
+    user: Any = None,
+    **_: Any,
+) -> Any:
+    """Route chat tasks to ai-manus or OpenHands using the task-aware selector."""
+    del request, user
+    if form_data is None:
+        inference_engine_unavailable()
+    try:
+        result = await route_chat_completion(
+            form_data,
+            stream=bool(form_data.get('stream')),
+        )
+    except EngineConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    if hasattr(result, '__aiter__'):
+        return StreamingResponse(result, media_type='text/event-stream')
+    return result
 
 
 async def embed(*_: Any, **__: Any) -> Any:
