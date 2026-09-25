@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getVersionUpdates } from '$lib/apis';
 	import { getOllamaVersion } from '$lib/apis/inference';
-	import { WEBUI_BUILD_HASH, WEBUI_VERSION } from '$lib/constants';
+	import { WEBUI_BUILD_HASH, WEBUI_VERSION, UPSTREAM_NAME, UPSTREAM_URL } from '$lib/constants';
 	import { WEBUI_NAME, config, showChangelog } from '$lib/stores';
 	import { compareVersion } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
@@ -155,7 +155,10 @@
 				{$i18n.t('Created by')}
 				<a class="text-gray-500 dark:text-gray-400" href="https://github.com/tjbck" target="_blank"
 					>Tim J. Baek</a
-				>
+				>, built on
+				<a class="text-gray-500 dark:text-gray-400" href={UPSTREAM_URL} target="_blank"
+					>{UPSTREAM_NAME}</a
+				>.
 			</div>
 		</UserSettingSection>
 	</div>

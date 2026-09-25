@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CORTEX servers are frequently self-hosted on a LAN and served over plain HTTP,
+  and the user chooses the address at runtime, so no static host allowlist can
+  cover every case. Cleartext is therefore permitted app-wide, matching the
+  upstream web UI, which also connects over whatever scheme the user types.
+
+  Prefer HTTPS whenever the server is reachable from the public internet.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

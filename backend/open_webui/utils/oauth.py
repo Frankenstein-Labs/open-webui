@@ -88,6 +88,7 @@ from open_webui.retrieval.web.utils import get_ssrf_safe_session, validate_url
 from open_webui.utils.auth import create_token, get_password_hash
 from open_webui.utils.groups import apply_default_group_assignment
 from open_webui.utils.misc import parse_duration
+from open_webui.utils.native_redirect import is_allowed_native_redirect
 from open_webui.utils.validate import validate_profile_image_url
 from starlette.responses import RedirectResponse
 
@@ -1734,6 +1735,18 @@ class OAuthManager:
             raise HTTPException(404)
         if provider not in OAUTH_PROVIDERS:
             raise HTTPException(404)
+
+        # Native app handoff: the Android app cannot receive cookie-based
+        # redirects, so it passes the deep link it wants the token delivered to.
+        # Stored server-side until the callback so the callback cannot be used
+        # to redirect a token to an arbitrary destination.
+        if 'session' in request.scope:
+            requested = request.query_params.get('native_redirect')
+            if requested and is_allowed_native_redirect(requested):
+                request.session['cortex_native_redirect'] = requested
+            else:
+                request.session.pop('cortex_native_redirect', None)
+
         # If the provider has a custom redirect URL, use that, otherwise automatically generate one
         client = self.get_client(provider)
         if client is None:
@@ -1758,6 +1771,7 @@ class OAuthManager:
             raise HTTPException(404)
 
         error_message = None
+        jwt_token = None
         try:
             client = self.get_client(provider)
 
@@ -2027,6 +2041,24 @@ class OAuthManager:
 
         webui_url = await Config.get('webui.url')
         redirect_base_url = (str(webui_url or request.base_url)).rstrip('/')
+
+        # The Android app runs the UI bundled in its WebView, so it shares no
+        # cookies with this server and cannot read the token cookie. It asks for
+        # a deep-link handoff at login time (see `handle_login`); the value is
+        # read back from the server-side session, never from the callback query
+        # string, so a crafted callback URL cannot redirect the token to a
+        # destination the app did not request.
+        native_redirect_uri = (
+            request.session.pop('cortex_native_redirect', None) if 'session' in request.scope else None
+        )
+
+        if native_redirect_uri:
+            if error_message:
+                query = urllib.parse.urlencode({'error': error_message})
+            else:
+                query = urllib.parse.urlencode({'token': jwt_token or ''})
+            return RedirectResponse(url=f'{native_redirect_uri}?{query}', headers=response.headers)
+
         redirect_url = f'{redirect_base_url}/auth'
 
         if error_message:

@@ -888,9 +888,15 @@ if LICENSE_PUBLIC_KEY:
 # WEBUI Identity
 ####################################
 
-WEBUI_NAME = os.getenv('WEBUI_NAME', 'Open WebUI')
-if WEBUI_NAME != 'Open WebUI':
-    WEBUI_NAME += ' (Open WebUI)'
+# Distribution name. CORTEX is the shipped identity; override with WEBUI_NAME
+# for white-labelling. Upstream attribution lives in LICENSE and in
+# UPSTREAM_NAME / WEBUI_ATTRIBUTION below rather than in every page title.
+CORTEX_NAME = 'CORTEX'
+UPSTREAM_NAME = 'Open WebUI'
+UPSTREAM_URL = 'https://github.com/open-webui/open-webui'
+
+WEBUI_NAME = os.getenv('WEBUI_NAME', CORTEX_NAME)
+WEBUI_ATTRIBUTION = f'Built on {UPSTREAM_NAME} ({UPSTREAM_URL})'
 
 WEBUI_FAVICON_URL = 'https://openwebui.com/favicon.png'
 WEBUI_BUILD_HASH = os.getenv('WEBUI_BUILD_HASH', 'dev-build')

@@ -918,3 +918,23 @@ html.high-contrast:not(.dark) .shimmer {
 	color: var(--color-gray-700);
 	-webkit-text-fill-color: var(--color-gray-700);
 }
+
+/*
+ * Native (Android) shell adjustments. The WebView sits under the status bar and
+ * above the keyboard, so the app needs a little breathing room the browser does
+ * not.
+ */
+html.capacitor {
+	/* Stop the browser-style pull-to-refresh gesture fighting app scroll. */
+	overscroll-behavior-y: contain;
+}
+
+html.capacitor body {
+	/* Respect the status bar and gesture-navigation insets. */
+	padding-top: env(safe-area-inset-top, 0px);
+}
+
+html.capacitor.keyboard-visible {
+	/* Keep the composer clear of the on-screen keyboard. */
+	scroll-padding-bottom: 2rem;
+}

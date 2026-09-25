@@ -35,6 +35,18 @@
 		<link rel="stylesheet" href="/static/custom.css" crossorigin="use-credentials" />
 
 		<script>
+			// The native shell tags the document so CSS can adapt (safe-area
+			// insets, keyboard, overscroll). The Capacitor bridge injects
+			// `window.Capacitor` before this runs.
+			(() => {
+				const capacitor = window.Capacitor;
+				if (capacitor?.isNativePlatform?.()) {
+					document.documentElement.classList.add('capacitor');
+				}
+			})();
+		</script>
+
+		<script>
 			function resizeIframe(obj) {
 				obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
 			}
@@ -115,7 +127,11 @@
 			})();
 		</script>
 
-		<title>Open WebUI</title>
+		<!--
+			CORTEX Android client, built on Open WebUI
+			(https://github.com/open-webui/open-webui), MIT licensed.
+		-->
+		<title>CORTEX</title>
 
 		%sveltekit.head%
 	</head>
