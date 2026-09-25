@@ -13,6 +13,15 @@ from open_webui.inference.cortex.capabilities import (
     EngineRegistry,
     EngineSession,
 )
+from open_webui.inference.cortex.computer import (
+    BaseComputer,
+    ComputerError,
+    ComputerKind,
+    ComputerSpec,
+    ExecResult,
+    FileEntry,
+)
+from open_webui.inference.cortex.computers import ComputerRecord, ComputerRegistry, get_computer_registry
 from open_webui.inference.cortex.orchestrator import CortexOrchestrator, EngineUnavailableError
 from open_webui.inference.cortex.policy import CortexPolicy, CortexPolicyError
 from open_webui.inference.cortex.providers import LlmProviderConfig, ProviderConfigError, resolve_provider_config
@@ -28,7 +37,13 @@ from open_webui.inference.cortex.routing import (
 __all__ = [
     'PROTOCOL_VERSION',
     'AgentCapability',
+    'BaseComputer',
     'Capability',
+    'ComputerError',
+    'ComputerKind',
+    'ComputerRecord',
+    'ComputerRegistry',
+    'ComputerSpec',
     'CortexEvent',
     'CortexOrchestrator',
     'CortexPolicy',
@@ -39,11 +54,14 @@ __all__ = [
     'EngineSelection',
     'EngineSession',
     'EngineUnavailableError',
+    'ExecResult',
+    'FileEntry',
     'LlmProviderConfig',
     'ProviderConfigError',
     'RoutingPlan',
     'TaskRequirements',
     'derive_requirements',
+    'get_computer_registry',
     'make_event',
     'plan_route',
     'resolve_provider_config',

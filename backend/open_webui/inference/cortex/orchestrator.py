@@ -13,16 +13,21 @@ becomes a single task rather than two unrelated prompts.
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from collections.abc import AsyncIterator, Iterable
 from typing import Any
 
+from open_webui.inference.cortex.adapters.base import attach_computer
 from open_webui.inference.cortex.capabilities import (
     AgentCapability,
     Capability,
     EngineContext,
     EngineRegistry,
 )
+from open_webui.inference.cortex.computer import ComputerKind
+from open_webui.inference.cortex.computer_api import SANDBOX_WORKSPACE
+from open_webui.inference.cortex.computer_policy import ComputerPolicyError
 from open_webui.inference.cortex.policy import CortexPolicy, CortexPolicyError
 from open_webui.inference.cortex.protocol import CortexEvent, error_event, make_event
 from open_webui.inference.cortex.routing import RoutingPlan, plan_route
@@ -43,9 +48,18 @@ class EngineUnavailableError(RuntimeError):
 class CortexOrchestrator:
     """Executes capability-routed tasks across one or more engines."""
 
-    def __init__(self, registry: EngineRegistry, policy: CortexPolicy | None = None) -> None:
+    def __init__(
+        self,
+        registry: EngineRegistry,
+        policy: CortexPolicy | None = None,
+        *,
+        computers: Any = None,
+    ) -> None:
         self.registry = registry
         self.policy = policy or CortexPolicy.from_env()
+        # Optional: when a computer registry is provided, a task provisions one
+        # machine and every engine in the plan runs on it.
+        self.computers = computers
 
     async def route(
         self,
@@ -91,61 +105,141 @@ class CortexOrchestrator:
             task_id=task_id,
         )
 
+        record = await self._provision_computer(plan, context, task_id)
+
         previous_result = ''
         previous_engine = ''
-        for index, selection in enumerate(plan.selections):
-            adapter = self.registry.get(selection.engine)
-            instruction = request
-            if index > 0 and previous_result:
-                instruction = _FOLLOW_UP_TEMPLATE.format(
-                    engine=previous_engine,
-                    request=request,
-                    result=previous_result,
+        close_reason = 'task complete'
+        # The try starts *before* the first yield that follows provisioning, so
+        # an abandoned stream (GeneratorExit at any later yield) still runs the
+        # release. Starting it after the computer event left a window where the
+        # machine was never torn down.
+        try:
+            if record is not None:
+                yield make_event(
+                    'ArtifactCreated',
+                    {
+                        'kind': 'computer',
+                        'computerId': record.id,
+                        'computerKind': record.computer.kind.value,
+                        'workspace': record.computer.spec.workspace_dir,
+                    },
+                    task_id=task_id,
                 )
 
-            session = await adapter.create_session(
-                {
-                    'id': task_id,
-                    'title': request[:120] or 'agent task',
-                    'objective': request,
-                    'context': context,
-                    'capabilities': sorted(capability.value for capability in selection.capabilities),
-                },
-                context,
-            )
-            yield make_event(
-                'TaskStarted',
-                {'engine': selection.engine, 'session': session.to_dict(), 'reason': selection.reason},
-                task_id=task_id,
-                agent_id=session.id,
-            )
+            for index, selection in enumerate(plan.selections):
+                adapter = self.registry.get(selection.engine)
+                instruction = request
+                if index > 0 and previous_result:
+                    instruction = _FOLLOW_UP_TEMPLATE.format(
+                        engine=previous_engine,
+                        request=request,
+                        result=previous_result,
+                    )
 
-            last_text = ''
-            try:
-                async for event in adapter.execute(session.id, instruction, context):
-                    if event.type == 'AgentMessage':
-                        text = str(event.payload.get('content') or '')
-                        if text:
-                            last_text = text
-                    yield event
-            except CortexPolicyError as exc:
-                yield error_event(exc.code, str(exc), recoverable=False, task_id=task_id)
-                yield make_event('TaskFailed', {'engine': selection.engine, 'code': exc.code}, task_id=task_id)
-                return
-            except Exception as exc:  # engine failures must not lose the task graph
-                log.exception('Engine %s failed during task %s', selection.engine, task_id)
-                yield error_event('engine_failure', f'{selection.engine}: {exc}', recoverable=True, task_id=task_id)
-                yield make_event('TaskFailed', {'engine': selection.engine, 'message': str(exc)}, task_id=task_id)
-                return
+                if record is not None:
+                    # Same machine for every engine in the chain: this is the whole
+                    # point of the computer plane.
+                    attach_computer(adapter, record, metadata=context.metadata)
+                    self.computers.attach_engine(record.id, selection.engine)
 
-            previous_result = last_text or previous_result
-            previous_engine = selection.engine
-            yield make_event(
-                'TaskCompleted',
-                {'engine': selection.engine, 'capabilities': sorted(c.value for c in selection.capabilities)},
+                session = await adapter.create_session(
+                    {
+                        'id': task_id,
+                        'title': request[:120] or 'agent task',
+                        'objective': request,
+                        'context': context,
+                        'capabilities': sorted(capability.value for capability in selection.capabilities),
+                    },
+                    context,
+                )
+                yield make_event(
+                    'TaskStarted',
+                    {'engine': selection.engine, 'session': session.to_dict(), 'reason': selection.reason},
+                    task_id=task_id,
+                    agent_id=session.id,
+                )
+
+                last_text = ''
+                try:
+                    async for event in adapter.execute(session.id, instruction, context):
+                        if event.type == 'AgentMessage':
+                            text = str(event.payload.get('content') or '')
+                            if text:
+                                last_text = text
+                        yield event
+                except CortexPolicyError as exc:
+                    close_reason = f'failed: {exc.code}'
+                    yield error_event(exc.code, str(exc), recoverable=False, task_id=task_id)
+                    yield make_event('TaskFailed', {'engine': selection.engine, 'code': exc.code}, task_id=task_id)
+                    break
+                except Exception as exc:  # engine failures must not lose the task graph
+                    close_reason = f'failed: {exc}'
+                    log.exception('Engine %s failed during task %s', selection.engine, task_id)
+                    yield error_event('engine_failure', f'{selection.engine}: {exc}', recoverable=True, task_id=task_id)
+                    yield make_event('TaskFailed', {'engine': selection.engine, 'message': str(exc)}, task_id=task_id)
+                    break
+
+                previous_result = last_text or previous_result
+                previous_engine = selection.engine
+                yield make_event(
+                    'TaskCompleted',
+                    {'engine': selection.engine, 'capabilities': sorted(c.value for c in selection.capabilities)},
+                    task_id=task_id,
+                    agent_id=session.id,
+                )
+
+            if record is not None:
+                # Reached on normal completion and on the `break` failure paths
+                # above. Not on GeneratorExit, where only the release runs.
+                yield make_event(
+                    'AgentStopped',
+                    {'computerId': record.id, 'reason': close_reason},
+                    task_id=task_id,
+                )
+        finally:
+            # Release on every exit path, including failure and an early
+            # generator close: a failed or abandoned task must not strand a
+            # container. Nothing is yielded here -- yielding inside `finally` in
+            # an async generator can raise during GeneratorExit.
+            if record is not None:
+                await self.computers.release(record.id)
+
+    async def _provision_computer(
+        self,
+        plan: RoutingPlan,
+        context: EngineContext,
+        task_id: str,
+    ) -> Any:
+        """Create the task's shared computer, if one is configured and wanted.
+
+        Returns ``None`` when no computer registry is attached or the task does
+        not need a machine (a pure chat/reasoning task), so the existing
+        behaviour for conversational requests is untouched.
+        """
+        if self.computers is None:
+            return None
+        if not _needs_computer(plan):
+            return None
+
+        kind = _computer_kind()
+        workspace = (
+            SANDBOX_WORKSPACE
+            if kind is ComputerKind.API
+            else os.getenv('CORTEX_COMPUTER_WORKSPACE_ROOT', '') or _default_workspace(task_id)
+        )
+        try:
+            return await self.computers.create(
+                user_id=context.user_id or '',
                 task_id=task_id,
-                agent_id=session.id,
+                workspace_dir=workspace,
+                conversation_id=context.chat_id or '',
+                workspace_id=context.workspace_id,
+                kind=kind,
             )
+        except ComputerPolicyError as exc:
+            log.warning('Computer refused for task %s: %s', task_id, exc)
+            return None
 
     async def collect(
         self,
@@ -195,3 +289,37 @@ def _request_text(form_data: dict[str, Any]) -> str:
         if isinstance(message, dict) and message.get('role') != 'system'
     ]
     return '\n\n'.join(part for part in parts if part)
+
+
+def _needs_computer(plan: RoutingPlan) -> bool:
+    """A machine is only provisioned when the plan actually touches one.
+
+    Chat and reasoning answers must not pay for a container, so this keys off
+    the capabilities the router selected rather than on Agent mode alone.
+    """
+    machine = {
+        Capability.TERMINAL,
+        Capability.FILES,
+        Capability.CODE,
+        Capability.BROWSER,
+        Capability.SCREEN,
+        Capability.COMPUTER,
+    }
+    return any(selection.capabilities & machine for selection in plan.selections)
+
+
+def _computer_kind() -> ComputerKind:
+    value = os.getenv('CORTEX_COMPUTER_KIND', 'docker').strip().lower()
+    try:
+        return ComputerKind(value)
+    except ValueError:
+        return ComputerKind.DOCKER
+
+
+def _default_workspace(task_id: str) -> str:
+    root = os.getenv('CORTEX_COMPUTER_WORKSPACE_ROOT', '')
+    if root:
+        return os.path.join(root, task_id)
+    import tempfile
+
+    return os.path.join(tempfile.gettempdir(), 'cortex-computers', task_id)

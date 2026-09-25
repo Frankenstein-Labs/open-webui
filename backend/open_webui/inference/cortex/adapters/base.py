@@ -72,11 +72,25 @@ class BaseEngineAdapter:
 
     name: str = ''
     _capabilities: Any = None
+    #: Set when a task gave this adapter a shared computer to run on.
+    computer: Any = None
 
     def __init__(self, policy: Any = None) -> None:
         self._sessions: dict[str, EngineSession] = {}
         self._initialized = False
         self.policy = policy
+        self.computer = None
+
+    def configure_computer(self, **kwargs: Any) -> None:
+        """Accept a shared computer for the next task.
+
+        Engines that talk to a *remote* sandbox (ai-manus via its
+        ``SANDBOX_ADDRESS`` hook) act on ``base_url``; engines that run in-host
+        ignore it. Returning silently for an unsupported hook keeps this
+        uniform across adapters, because the computer is a property of the task,
+        not of one engine.
+        """
+        return None
 
     # ── lifecycle ────────────────────────────────────────────────────────
     async def initialize(self) -> None:
@@ -152,3 +166,40 @@ class BaseEngineAdapter:
     def message(self, session: EngineSession, content: str, **extra: Any) -> CortexEvent:
         payload = {'content': content, **extra}
         return make_event('AgentMessage', payload, task_id=session.task_id, agent_id=session.id)
+
+
+def attach_computer(adapter: Any, record: Any, *, metadata: dict[str, Any] | None = None) -> Any:
+    """Give *adapter* the task's shared computer.
+
+    Two mechanisms, in order:
+
+    1. ``adapter.configure_computer(base_url=...)`` when the adapter declares the
+       hook. That is the native integration: ai-manus is pointed at the sandbox
+       through the same setting it already reads (``SANDBOX_ADDRESS``), so it
+       stops provisioning its own container and uses ours.
+    2. ``metadata['computer']`` otherwise, so an engine without a native hook
+       still learns which computer the task owns -- enough for it to run
+       in-host against the same workspace.
+
+    The call is intentionally tolerant: an engine that cannot use a remote
+    computer must not fail the task, it simply runs where it runs.
+    """
+    computer = getattr(record, 'computer', None)
+    base_url = computer.computer_url() if computer is not None else ''
+
+    configure = getattr(adapter, 'configure_computer', None)
+    if callable(configure):
+        try:
+            return configure(base_url=base_url)
+        except TypeError:
+            # Older/other adapters may take no arguments.
+            pass
+
+    if metadata is not None:
+        metadata['computer'] = {
+            'id': getattr(record, 'id', ''),
+            'kind': getattr(getattr(computer, 'kind', None), 'value', ''),
+            'url': base_url,
+            'workspace': getattr(getattr(computer, 'spec', None), 'workspace_dir', ''),
+        }
+    return None

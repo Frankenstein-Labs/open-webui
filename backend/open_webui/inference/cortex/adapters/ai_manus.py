@@ -56,6 +56,9 @@ class AiManusAdapter(BaseEngineAdapter):
 
     def __init__(self, policy: Any = None) -> None:
         super().__init__(policy=policy)
+        # Set when the task hands this adapter a shared computer; it wins over
+        # AI_MANUS_URL for the duration of that task.
+        self._base_url_override = ''
         self._capabilities = AgentCapability(
             engine=self.name,
             tools=_CAPABILITIES,
@@ -67,8 +70,20 @@ class AiManusAdapter(BaseEngineAdapter):
         )
 
     # ── configuration ────────────────────────────────────────────────────
+    def configure_computer(self, *, base_url: str = '') -> None:
+        """Point ai-manus at the task's shared sandbox.
+
+        ai-manus reads its sandbox location from ``SANDBOX_ADDRESS``; when it is
+        set the backend stops creating its own container per task and uses the
+        one we give it. That is what makes the computer genuinely shared between
+        engines instead of each engine silently starting its own machine.
+        """
+        if base_url:
+            self._base_url_override = base_url
+            os.environ['AI_MANUS_SANDBOX_ADDRESS'] = base_url
+
     def _base_url(self) -> str:
-        url = os.getenv('AI_MANUS_URL', '').rstrip('/')
+        url = (self._base_url_override or os.getenv('AI_MANUS_URL', '')).rstrip('/')
         if not url:
             raise RuntimeError('AI_MANUS_URL is required for computer and browser tasks')
         if self.policy is not None:

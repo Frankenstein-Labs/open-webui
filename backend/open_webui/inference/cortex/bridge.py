@@ -19,6 +19,7 @@ from typing import Any
 from open_webui.inference.cortex.adapters.ai_manus import AiManusAdapter
 from open_webui.inference.cortex.adapters.openhands import OpenHandsAdapter
 from open_webui.inference.cortex.capabilities import Capability, EngineContext, EngineRegistry
+from open_webui.inference.cortex.computers import get_computer_registry
 from open_webui.inference.cortex.orchestrator import CortexOrchestrator, describe_registry
 from open_webui.inference.cortex.policy import CortexPolicy
 from open_webui.inference.cortex.routing import derive_requirements, plan_route
@@ -63,7 +64,16 @@ def reset_registry() -> None:
 
 
 def get_orchestrator() -> CortexOrchestrator:
-    return CortexOrchestrator(get_registry(), CortexPolicy.from_env())
+    return CortexOrchestrator(
+        get_registry(),
+        CortexPolicy.from_env(),
+        computers=get_computer_registry() if _computers_enabled() else None,
+    )
+
+
+def _computers_enabled() -> bool:
+    """The shared computer plane is opt-in, like the orchestrator itself."""
+    return os.getenv('CORTEX_COMPUTER_ENABLED', 'false').lower() == 'true'
 
 
 def describe_engines() -> dict[str, Any]:
