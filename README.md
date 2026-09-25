@@ -109,6 +109,15 @@ We are incredibly grateful for the generous support of our sponsors. Their contr
 
 ## How to Install 🚀
 
+### Android app 📱
+
+This fork also ships a **CORTEX** Android client. It bundles this web UI into a
+Capacitor shell, connects to a CORTEX server you choose on first launch, and adds
+native deep-link OAuth, back-button handling and status-bar integration.
+
+See [`android/README.md`](./android/README.md) for the build, branding and
+device-testing instructions.
+
 ### Installation via Python pip 🐍
 
 Open WebUI can be installed using pip, the Python package installer. Before proceeding, ensure you're using **Python 3.11** to avoid compatibility issues.

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { toolServers, tools } from '$lib/stores';
+	import { APP_NAME } from '$lib/constants';
 
 	import Modal from '../common/Modal.svelte';
 	import Collapsible from '../common/Collapsible.svelte';
@@ -112,7 +113,7 @@
 
 			<div class="px-5 pb-5 w-full flex flex-col justify-center">
 				<div class=" text-xs text-gray-600 dark:text-gray-300 mb-2">
-					{$i18n.t('Open WebUI can use tools provided by any OpenAPI server.')} <br /><a
+					{$i18n.t('{{name}} can use tools provided by any OpenAPI server.', { name: APP_NAME })} <br /><a
 						class="underline"
 						href="https://github.com/open-webui/openapi-servers"
 						target="_blank">{$i18n.t('Learn more about OpenAPI tool servers.')}</a

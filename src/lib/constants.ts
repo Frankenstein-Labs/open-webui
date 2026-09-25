@@ -1,10 +1,34 @@
 import { browser, dev } from '$app/environment';
 // import { version } from '../../package.json';
 
-export const APP_NAME = 'Open WebUI';
+export const APP_NAME = import.meta.env.VITE_APP_NAME || 'CORTEX';
+
+// Upstream project this distribution is built from. Kept explicit so the
+// Open WebUI attribution survives every rebrand.
+export const UPSTREAM_NAME = 'Open WebUI';
+export const UPSTREAM_URL = 'https://github.com/open-webui/open-webui';
 
 export const WEBUI_HOSTNAME = browser ? (dev ? `${location.hostname}:8080` : ``) : '';
-export const WEBUI_BASE_URL = browser ? (dev ? `http://${WEBUI_HOSTNAME}` : ``) : ``;
+
+/**
+ * Where the native build remembers the server the user connected to.
+ * `$lib/native` reads and writes the same key.
+ */
+export const SERVER_URL_KEY = 'cortexServerUrl';
+
+/**
+ * Origin requests are sent to. Empty means "same origin as the page".
+ *
+ * The Android app loads a bundled copy of the UI from the WebView itself, so an
+ * empty origin would point every request at `file://`. The server address picked
+ * during onboarding wins; `VITE_CORTEX_SERVER_URL` bakes in a default at build
+ * time for managed deployments.
+ */
+export const WEBUI_BASE_URL = browser
+	? dev
+		? `http://${WEBUI_HOSTNAME}`
+		: localStorage[SERVER_URL_KEY] || import.meta.env.VITE_CORTEX_SERVER_URL || ``
+	: ``;
 export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
 
 export const OLLAMA_API_BASE_URL = `${WEBUI_BASE_URL}/ollama`;

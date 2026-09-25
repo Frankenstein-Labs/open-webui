@@ -7,6 +7,17 @@ declare global {
 		// interface PageData {}
 		// interface Platform {}
 	}
+
+	interface ImportMetaEnv {
+		/** Overrides the product name (default: CORTEX). */
+		readonly VITE_APP_NAME?: string;
+		/** Default server origin baked into native builds. */
+		readonly VITE_CORTEX_SERVER_URL?: string;
+	}
+
+	interface ImportMeta {
+		readonly env: ImportMetaEnv;
+	}
 }
 
 export {};

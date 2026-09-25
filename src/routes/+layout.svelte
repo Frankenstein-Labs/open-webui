@@ -63,6 +63,8 @@
 	} from '$lib/utils/connections';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL, WEBUI_HOSTNAME } from '$lib/constants';
+	import { initNative, isNative, parseAuthCallback, closeExternalUrl } from '$lib/native';
+	import NativeServerSetup from '$lib/components/native/NativeServerSetup.svelte';
 	import {
 		bestMatchingLanguage,
 		cleanText,
@@ -110,6 +112,47 @@
 	let loaded = false;
 	let tokenTimer = null;
 	let isAuthRedirectInProgress = false;
+
+	// Native shell state: back button, deep links and the initial server prompt.
+	let showNativeServerSetup = false;
+	let disposeNative = () => {};
+	let lastNativeDeepLink = '';
+
+	const applyAuthToken = (token) => {
+		if (!token) return false;
+		localStorage.token = token;
+		return true;
+	};
+
+	const handleNativeDeepLink = async (url) => {
+		if (url === lastNativeDeepLink) return;
+		lastNativeDeepLink = url;
+
+		const result = parseAuthCallback(url);
+		if (result) {
+			await closeExternalUrl();
+			if (result.error) {
+				toast.error(result.error);
+				return;
+			}
+			if (applyAuthToken(result.token)) {
+				// Reload so every store re-fetches with the new session.
+				window.location.replace('/');
+			}
+			return;
+		}
+	};
+
+	const handleNativeBack = () => {
+		// The top-most Modal listens for Escape on window and closes itself.
+		// Dispatching it here gives the back gesture the expected "dismiss what is
+		// on top" feel.
+		if (document.getElementsByClassName('modal').length) {
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+			return true;
+		}
+		return false;
+	};
 
 	let showRefresh = false;
 
@@ -990,6 +1033,26 @@
 	};
 
 	onMount(async () => {
+		// Native shell bootstrap: back button, deep links, status bar and splash.
+		if (isNative()) {
+			disposeNative = await initNative({
+				onBack: handleNativeBack,
+				onDeepLink: handleNativeDeepLink
+			});
+
+			// A bundled UI with no stored address and no build-time default cannot
+			// reach any backend, so ask for one before the app tries to load.
+			if (!WEBUI_BASE_URL) {
+				showNativeServerSetup = true;
+			}
+
+			// The Android shell is a phone/tablet: use the app layout (sidebar
+			// overlay) instead of the desktop three-pane layout.
+			if (window.innerWidth < BREAKPOINT) {
+				mobile.set(true);
+			}
+		}
+
 		const originalFetch = window.fetch.bind(window);
 		window.fetch = async (input, init) => {
 			const response = await originalFetch(input, init);
@@ -1289,6 +1352,7 @@
 
 	onDestroy(() => {
 		bc.close();
+		disposeNative();
 	});
 </script>
 
@@ -1337,6 +1401,11 @@
 {#if $config?.features.enable_community_sharing}
 	<SyncStatsModal bind:show={showSyncStatsModal} eventData={syncStatsEventData} />
 {/if}
+
+<NativeServerSetup
+	bind:show={showNativeServerSetup}
+	on:skip={() => (showNativeServerSetup = false)}
+/>
 
 <Toaster
 	theme={$theme.includes('dark')

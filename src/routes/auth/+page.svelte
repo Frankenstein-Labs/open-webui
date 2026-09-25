@@ -18,6 +18,7 @@
 	} from '$lib/apis/auths';
 
 	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+	import { startOAuth, isNative } from '$lib/native';
 	import { WEBUI_NAME, config, user, socket } from '$lib/stores';
 
 	import { generateInitialsImage, canvasPixelTest, getUserTimezone } from '$lib/utils';
@@ -124,6 +125,10 @@
 		}
 	};
 
+	const oauthLogin = async (provider) => {
+		await startOAuth(WEBUI_BASE_URL, provider);
+	};
+
 	const oauthCallbackHandler = async () => {
 		// Get the value of the 'token' cookie
 		function getCookie(name) {
@@ -187,7 +192,7 @@
 				!localStorage.token &&
 				!document.cookie.split('; ').some((c) => c.startsWith('token='))
 			) {
-				window.location.href = `${WEBUI_BASE_URL}/oauth/${providers[0]}/login`;
+				await oauthLogin(providers[0]);
 				return;
 			}
 		}
@@ -457,7 +462,7 @@
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-normal text-sm py-2.5"
 											on:click={() => {
-												window.location.href = `${WEBUI_BASE_URL}/oauth/google/login`;
+												oauthLogin('google');
 											}}
 										>
 											<svg
@@ -487,7 +492,7 @@
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-normal text-sm py-2.5"
 											on:click={() => {
-												window.location.href = `${WEBUI_BASE_URL}/oauth/microsoft/login`;
+												oauthLogin('microsoft');
 											}}
 										>
 											<svg
@@ -518,7 +523,7 @@
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-normal text-sm py-2.5"
 											on:click={() => {
-												window.location.href = `${WEBUI_BASE_URL}/oauth/github/login`;
+												oauthLogin('github');
 											}}
 										>
 											<svg
@@ -539,7 +544,7 @@
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-normal text-sm py-2.5"
 											on:click={() => {
-												window.location.href = `${WEBUI_BASE_URL}/oauth/oidc/login`;
+												oauthLogin('oidc');
 											}}
 										>
 											<svg
@@ -569,7 +574,7 @@
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-normal text-sm py-2.5"
 											on:click={() => {
-												window.location.href = `${WEBUI_BASE_URL}/oauth/feishu/login`;
+												oauthLogin('feishu');
 											}}
 										>
 											<span>{$i18n.t('Continue with {{provider}}', { provider: 'Feishu' })}</span>
